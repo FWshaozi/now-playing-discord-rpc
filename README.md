@@ -85,3 +85,7 @@ Discord 状态栏里「正在听 XXX」的 XXX 来自 Application 的**名称**�
 - [Widdit/now-playing-service](https://github.com/Widdit/now-playing-service) — 提供歌曲信息与歌词 API
 - [Widdit/now-playing-frontend](https://github.com/Widdit/now-playing-frontend) — Now Playing 前端
 - [pypresence](https://github.com/qwertyquerty/pypresence) — Discord IPC 封装
+
+## 许可证
+
+本项目基于 [MIT License](LICENSE) 开源，可自由使用、修改与分发。
