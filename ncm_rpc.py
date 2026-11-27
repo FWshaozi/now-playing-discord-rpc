@@ -98,10 +98,14 @@ def get_current_lyric(lrc_lines, pos_ms: int) -> str:
 
 
 def clamp_field(value, fallback: str, min_len: int = 2, max_len: int = 128) -> str:
-    """Discord 要求 details/state 非空且至少 2 个字符，空值或过短时用占位文案兜底"""
+    """Discord 要求 details/state 非空且至少 2 个字符。
+    空值用占位文案兜底；内容过短（如单字歌名《旭》）用尾部空格补齐，不丢弃原内容。
+    实测 Discord 的字符计数包含尾部空格，因此补齐后的字段能通过校验且视觉上看不出差别。"""
     text = str(value).strip() if value is not None else ""
-    if len(text) < min_len:
+    if not text:
         text = fallback
+    if len(text) < min_len:
+        text = text + " " * (min_len - len(text))
     return text[:max_len]
 
 
