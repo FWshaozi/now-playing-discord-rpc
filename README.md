@@ -71,6 +71,7 @@ Discord 状态栏里「正在听 XXX」的 XXX 来自 Application 的**名称**�
 |---|---|---|
 | `BASE_URL` | `http://localhost:9863` | Now Playing 服务地址 |
 | `SHOW_LYRIC_ON_HOVER` | `True` | 悬停显示歌词；`False` 则显示专辑名 |
+| `NO_LYRIC_HOVER_TEXT` | `"纯音乐，请欣赏"` | 歌词功能开启但该歌曲无歌词（如纯音乐）时的悬停文案；留空 `""` 则回退显示专辑名 |
 | `COVER_WAIT_TIMEOUT_SEC` | `10` | 封面等待上限（秒），超时回退为应用图标 |
 | `FALLBACK_COVER_ASSET` | `""` | 可选：Art Assets 兜底大图名称，留空则只显示应用图标 |
 | `GAP_MAX_HOLD_SEC` | `1800` | 切歌空档最多保留上一首卡片多久（秒），`0` = 永不超时 |

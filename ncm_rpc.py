@@ -8,6 +8,7 @@ from pypresence import Presence
 # ==================== 配置区 ====================
 BASE_URL = "http://localhost:9863"
 SHOW_LYRIC_ON_HOVER = True   # True: 悬停封面显示实时歌词; False: 显示专辑名
+NO_LYRIC_HOVER_TEXT = "纯音乐，请欣赏"  # 歌词功能开启但该歌曲无歌词时的悬停文案；留空 "" 则回退显示专辑名
 SWITCH_GRACE_SEC = 3.0       # 切歌/状态检测防抖缓冲时间（秒），缓冲期内的状态波动直接忽略
 GAP_MAX_HOLD_SEC = 1800      # 切歌空档最多保留上一首卡片多久（秒），超时降级为仅显示应用名；0 = 永不超时
 PLATFORM_REFRESH_SEC = 30    # 轮询 /api/settings/general 检测当前平台的间隔（秒）
@@ -29,8 +30,7 @@ PLATFORM_CLIENT_IDS = {
     "soda": "",      # 汽水音乐
     "wesing": "",    # 全民K歌
 }
-# 兜底 Application：未在上面单独配置的平台会使用它（可填写一个通用应用）
-DEFAULT_CLIENT_ID = ""
+DEFAULT_CLIENT_ID = ""  # 兜底 Application（如原来的“网易云音乐”应用）
 
 # 平台标识 -> 中文展示名（日志用）
 PLATFORM_NAMES = {
@@ -95,6 +95,14 @@ def get_current_lyric(lrc_lines, pos_ms: int) -> str:
         else:
             break
     return current
+
+
+def clamp_field(value, fallback: str, min_len: int = 2, max_len: int = 128) -> str:
+    """Discord 要求 details/state 非空且至少 2 个字符，空值或过短时用占位文案兜底"""
+    text = str(value).strip() if value is not None else ""
+    if len(text) < min_len:
+        text = fallback
+    return text[:max_len]
 
 
 def connect_discord(client_id: str):
@@ -229,6 +237,7 @@ def main():
     # 'PAUSED'(暂停：冻结的完整卡片) | 'GAP'(切歌空档：保留上一首冻结卡片)
     current_mode = "NONE"
     last_song_id = None
+    lyric_song_id = None     # 当前 cached_lrc 所属歌曲的 id，与卡片状态解耦，防止暂停切歌后歌词不刷新
     expected_start_ts = 0
     cached_lrc = []
     pause_since = None      # 进入暂停/切歌空档的时间戳（防抖用）
@@ -255,6 +264,7 @@ def main():
                         # 新 IPC 连接上没有旧卡片，重置状态机，本轮按当前播放状态强制重发
                         current_mode = "NONE"
                         last_song_id = None
+                        lyric_song_id = None
                         pause_since = None
                         gap_since = None
                 last_platform_check = time.time()
@@ -265,6 +275,7 @@ def main():
                     rpc_mgr.clear()
                     current_mode = "NONE"
                     last_song_id = None
+                    lyric_song_id = None
                     pause_since = None
                     gap_since = None
                     print("[状态] 播放器已关闭，清除 Discord 状态")
@@ -279,7 +290,8 @@ def main():
             has_song = player.get("hasSong", False)
             is_paused = player.get("isPaused", True)
             title = track.get("title", "")
-            is_playing = has_song and (not is_paused) and bool(title)
+            # 不再要求 title 非空：空标题由 clamp_field 兜底，避免纯音乐/异常数据整张卡片发不出去
+            is_playing = has_song and (not is_paused)
 
             # 3. 情况 A：正在播放歌曲
             if is_playing:
@@ -292,12 +304,14 @@ def main():
                 duration = int(track.get("duration", 0))
                 pos_sec = int(player.get("seekbarCurrentPosition", 0))
 
-                if song_id != last_song_id and SHOW_LYRIC_ON_HOVER:
+                if song_id != lyric_song_id and SHOW_LYRIC_ON_HOVER:
                     try:
                         lrc_resp = requests.get(f"{BASE_URL}/api/lyric", timeout=2).json()
                         cached_lrc = parse_lrc(lrc_resp.get("lrc", "")) if lrc_resp.get("hasLyric") else []
                     except Exception:
                         cached_lrc = []
+                    # 无论成功与否都标记，避免同一首歌反复请求；切歌后 lyric_song_id 变化会重新拉取
+                    lyric_song_id = song_id
 
                 now = int(time.time())
                 calc_start_ts = now - pos_sec
@@ -348,11 +362,14 @@ def main():
                     lyric_line = get_current_lyric(cached_lrc, pos_ms)
                     if lyric_line:
                         hover_text = f"♪ {lyric_line}"
+                elif SHOW_LYRIC_ON_HOVER and not cached_lrc and NO_LYRIC_HOVER_TEXT.strip():
+                    # 无歌词（如纯音乐）：显示固定文案；配置留空则沿用专辑名
+                    hover_text = NO_LYRIC_HOVER_TEXT.strip()
 
                 if need_update or (SHOW_LYRIC_ON_HOVER and cached_lrc):
                     payload = {
-                        "details": title[:128],
-                        "state": author[:128],
+                        "details": clamp_field(title, "未知歌曲"),
+                        "state": clamp_field(author, "未知歌手"),
                         **extra_kwargs,
                     }
                     # 封面未就绪/已回退时不下发 large_image，避免 Discord 继续沿用上一首的封面
@@ -379,8 +396,8 @@ def main():
 
             # 4. 情况 B：播放器开着，但当前没在播放
             else:
-                # 4.1 手动暂停：hasSong=True 且有歌名，保留完整卡片但冻结进度条
-                if has_song and bool(title):
+                # 4.1 手动暂停：hasSong=True，保留完整卡片但冻结进度条
+                if has_song:
                     if current_mode == "PLAYING":
                         # 防抖：刚从播放停下来，缓冲期内先不更新，避免检测抖动导致闪烁
                         if pause_since is None:
@@ -393,8 +410,8 @@ def main():
                     # 暂停状态下也可能切歌（暂停时点下一首），歌曲变化时需重建冻结卡片
                     if current_mode != "PAUSED" or paused_song_id != last_song_id:
                         payload = {
-                            "details": title[:128],
-                            "state": track.get("author", "未知歌手")[:128],
+                            "details": clamp_field(title, "未知歌曲"),
+                            "state": clamp_field(track.get("author", ""), "未知歌手"),
                             **extra_kwargs,
                         }
                         # 仅使用已确认可用的封面，避免把上一首的残留封面带上卡片
@@ -443,6 +460,7 @@ def main():
                             rpc_mgr.update(**extra_kwargs)
                             current_mode = "IDLE"
                             last_song_id = None
+                            lyric_song_id = None
                             gap_since = None
                             print("[状态] 空档超过保留时限，降级为仅显示播放器名称")
                     elif current_mode not in ("PLAYING", "PAUSED"):
@@ -451,6 +469,7 @@ def main():
                             rpc_mgr.update(**extra_kwargs)
                             current_mode = "IDLE"
                             last_song_id = None
+                            lyric_song_id = None
                             print("[状态] 播放器已打开（空闲/待机），仅显示播放器名称")
 
         except requests.exceptions.RequestException:
@@ -461,6 +480,7 @@ def main():
                     pass
                 current_mode = "NONE"
                 last_song_id = None
+                lyric_song_id = None
                 pause_since = None
                 gap_since = None
             print("[等待] Now Playing 服务未响应，2秒后重试...")
@@ -468,6 +488,7 @@ def main():
             print(f"[异常] {e}，尝试重新连接 Discord...")
             current_mode = "NONE"
             last_song_id = None
+            lyric_song_id = None
             pause_since = None
             gap_since = None
             rpc_mgr.reconnect()
