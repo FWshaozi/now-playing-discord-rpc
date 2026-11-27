@@ -1,12 +1,11 @@
 @echo off
-chcp 65001 >nul
 setlocal
 
-rem ç²¾ç¡®åŒ¹é…ã€Œè§£é‡Šå™¨ + å®Œæ•´è„šæœ¬è·¯å¾„ã€ï¼Œé¿å…è¯¯æ€ç¼–è¾‘å™¨ç­‰è¿›ç¨‹
+rem ¾«È·Æ¥Åä¡¸½âÊÍÆ÷ + ÍêÕû½Å±¾Â·¾¶¡¹£¬±ÜÃâÎóÉ±±à¼­Æ÷µÈ½ø³Ì
 set "TARGET=%~dp0ncm_rpc.py"
 
-echo æ­£åœ¨æŸ¥æ‰¾è¿è¡Œå®ä¾‹ï¼š%TARGET%
-powershell -NoProfile -Command "$t='%~dp0ncm_rpc.py'; $p = Get-CimInstance Win32_Process | Where-Object { ($_.Name -eq 'pythonw.exe' -or $_.Name -eq 'python.exe') -and $_.CommandLine -like ('*' + $t + '*') }; if (-not $p) { Write-Host 'æ²¡æœ‰æ­£åœ¨è¿è¡Œçš„å®ä¾‹ã€‚' -ForegroundColor Yellow } else { foreach ($x in $p) { Stop-Process -Id $x.ProcessId -Force -ErrorAction SilentlyContinue; Write-Host ('å·²åœæ­¢ PID ' + $x.ProcessId) -ForegroundColor Green } }"
+echo ÕıÔÚ²éÕÒÔËĞĞÊµÀı£º%TARGET%
+powershell -NoProfile -Command "$t='%~dp0ncm_rpc.py'; $p = Get-CimInstance Win32_Process | Where-Object { ($_.Name -eq 'pythonw.exe' -or $_.Name -eq 'python.exe') -and $_.CommandLine -like ('*' + $t + '*') }; if (-not $p) { Write-Host 'Ã»ÓĞÕıÔÚÔËĞĞµÄÊµÀı¡£' -ForegroundColor Yellow } else { foreach ($x in $p) { Stop-Process -Id $x.ProcessId -Force -ErrorAction SilentlyContinue; Write-Host ('ÒÑÍ£Ö¹ PID ' + $x.ProcessId) -ForegroundColor Green } }"
 
 echo.
 pause

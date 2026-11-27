@@ -1,7 +1,6 @@
 @echo off
-chcp 65001 >nul
 setlocal
 
-echo æ­£åœ¨è·Ÿè¸ªä»Šæ—¥æ—¥å¿—ï¼ˆæŒ‰ Ctrl+C é€€å‡ºï¼‰...
+echo ÕıÔÚ¸ú×Ù½ñÈÕÈÕÖ¾£¨°´ Ctrl+C ÍË³ö£©...
 echo.
-powershell -NoProfile -Command "$d = Get-Date -Format 'yyyyMMdd'; $p = Join-Path '%~dp0logs' ('ncm_rpc-' + $d + '.log'); if (Test-Path $p) { Write-Host ('===== ' + $p + ' =====') -ForegroundColor Cyan; Get-Content $p -Tail 60 -Wait -Encoding UTF8 } else { Write-Host ('ä»Šæ—¥æ—¥å¿—ä¸å­˜åœ¨: ' + $p) -ForegroundColor Yellow; Write-Host 'æç¤ºï¼šç”¨ .vbs / pythonw å¯åŠ¨åæ‰ä¼šç”Ÿæˆæ—¥å¿—ï¼›ç”¨ python.exe å¯åŠ¨æ—¶è¾“å‡ºç›´æ¥æ˜¾ç¤ºåœ¨æ§åˆ¶å°ã€‚' }"
+powershell -NoProfile -Command "$d = Get-Date -Format 'yyyyMMdd'; $p = Join-Path '%~dp0logs' ('ncm_rpc-' + $d + '.log'); if (Test-Path $p) { Write-Host ('===== ' + $p + ' =====') -ForegroundColor Cyan; Get-Content $p -Tail 60 -Wait -Encoding UTF8 } else { Write-Host ('½ñÈÕÈÕÖ¾²»´æÔÚ: ' + $p) -ForegroundColor Yellow; Write-Host 'ÌáÊ¾£ºÓÃ .vbs / pythonw Æô¶¯ºó²Å»áÉú³ÉÈÕÖ¾£»ÓÃ python.exe Æô¶¯Ê±Êä³öÖ±½ÓÏÔÊ¾ÔÚ¿ØÖÆÌ¨¡£' }"
